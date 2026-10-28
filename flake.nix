@@ -16,7 +16,7 @@
         inputs.treefmt-nix.flakeModule
       ];
 
-      perSystem = { pkgs, config, lib, system, ... }: {
+      perSystem = { pkgs, config, ... }: {
         # Nix code formatter -> 'nix fmt'
         treefmt.config = {
           projectRootFile = "flake.nix";
@@ -45,26 +45,13 @@
         };
 
         packages = {
-          tpm-host-key = pkgs.callPackage ./package.nix { };
+          tpm-host-key = pkgs.callPackage ./packages/tpm-host-key { };
           default = config.packages.tpm-host-key;
         };
 
         checks = {
           derive = config.packages.tpm-host-key.tests.derive;
-          # The module must also evaluate on hosts without agenix
-          module = (inputs.nixpkgs.lib.nixosSystem {
-            modules = [
-              self.nixosModules.default
-              {
-                boot.loader.grub.enable = false;
-                fileSystems."/" = { device = "/dev/null"; fsType = "ext4"; };
-                nixpkgs.hostPlatform = system;
-                services.openssh.enable = true;
-                services.tpmHostKey.enable = true;
-                system.stateVersion = lib.trivial.release;
-              }
-            ];
-          }).config.system.build.toplevel;
+          vm = pkgs.callPackage ./tests/vm.nix { module = self.nixosModules.default; };
         };
       };
 
